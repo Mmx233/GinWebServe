@@ -32,6 +32,10 @@ func New(fe fs.FS) (gin.HandlerFunc, error) {
 	fileServer := http.StripPrefix("/", http.FileServer(http.FS(fe)))
 
 	return func(c *gin.Context) {
+		if c.Request.Method != "GET" || c.FullPath() != "" || c.Writer.Written() {
+			return
+		}
+
 		f, e := fe.Open(strings.TrimPrefix(c.Request.URL.Path, "/"))
 		if e != nil {
 			if _, ok := e.(*fs.PathError); ok {
