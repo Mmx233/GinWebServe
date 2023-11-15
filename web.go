@@ -16,14 +16,14 @@ func etag(d []byte) string {
 	return fmt.Sprintf("W/\"%x\"", hash.Sum(nil))
 }
 
-func New(fe fs.FS) (gin.HandlerFunc, error) {
-	file, e := fe.Open("index.html")
-	if e != nil {
-		return nil, e
+func NewWithInterceptor(fe fs.FS, handler gin.HandlerFunc) (gin.HandlerFunc, error) {
+	file, err := fe.Open("index.html")
+	if err != nil {
+		return nil, err
 	}
-	fileContentBytes, e := io.ReadAll(file)
-	if e != nil {
-		return nil, e
+	fileContentBytes, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
 	}
 	_ = file.Close()
 	index := string(fileContentBytes)
@@ -36,9 +36,16 @@ func New(fe fs.FS) (gin.HandlerFunc, error) {
 			return
 		}
 
-		f, e := fe.Open(strings.TrimPrefix(c.Request.URL.Path, "/"))
-		if e != nil {
-			if _, ok := e.(*fs.PathError); ok {
+		if handler != nil {
+			handler(c)
+			if c.IsAborted() {
+				return
+			}
+		}
+
+		f, err := fe.Open(strings.TrimPrefix(c.Request.URL.Path, "/"))
+		if err != nil {
+			if _, ok := err.(*fs.PathError); ok {
 				if c.GetHeader("If-None-Match") == indexEtag {
 					c.AbortWithStatus(304)
 					return
@@ -50,7 +57,7 @@ func New(fe fs.FS) (gin.HandlerFunc, error) {
 				c.Abort()
 				return
 			} else {
-				c.String(500, e.Error())
+				c.String(500, err.Error())
 				return
 			}
 		}
@@ -60,4 +67,8 @@ func New(fe fs.FS) (gin.HandlerFunc, error) {
 		fileServer.ServeHTTP(c.Writer, c.Request)
 		c.Abort()
 	}, nil
+}
+
+func New(fe fs.FS) (gin.HandlerFunc, error) {
+	return NewWithInterceptor(fe, nil)
 }
