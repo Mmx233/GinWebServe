@@ -32,7 +32,7 @@ func NewWithInterceptor(fe fs.FS, handler gin.HandlerFunc) (gin.HandlerFunc, err
 	fileServer := http.StripPrefix("/", http.FileServer(http.FS(fe)))
 
 	return func(c *gin.Context) {
-		if c.Request.Method != "GET" || c.FullPath() != "" || c.Writer.Written() {
+		if c.Request.Method != "GET" || c.Writer.Written() {
 			return
 		}
 
