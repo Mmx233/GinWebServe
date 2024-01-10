@@ -1,6 +1,6 @@
 # GinWebServe
 
-Serve embeded SPA static website in gin
+Serve embeded SPA static website in gin, index.html is required.
 
 ## Usage
 
@@ -61,6 +61,7 @@ func init() {
 	gin.SetMode(gin.ReleaseMode)
 	E = gin.Default()
 
+	// place it after all other routes
 	E.Use(frontendHandler())
 }
 
