@@ -2,6 +2,7 @@ package webServe
 
 import (
 	"crypto/md5"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"io"
@@ -45,7 +46,8 @@ func NewWithInterceptor(fe fs.FS, handler gin.HandlerFunc) (gin.HandlerFunc, err
 
 		f, err := fe.Open(strings.TrimPrefix(c.Request.URL.Path, "/"))
 		if err != nil {
-			if _, ok := err.(*fs.PathError); ok {
+			var fsError *fs.PathError
+			if errors.As(err, &fsError) {
 				if c.GetHeader("If-None-Match") == indexEtag {
 					c.AbortWithStatus(304)
 					return
@@ -55,9 +57,6 @@ func NewWithInterceptor(fe fs.FS, handler gin.HandlerFunc) (gin.HandlerFunc, err
 				c.Header("Etag", indexEtag)
 				c.String(200, index)
 				c.Abort()
-				return
-			} else {
-				c.String(500, err.Error())
 				return
 			}
 		}
