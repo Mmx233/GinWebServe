@@ -17,7 +17,12 @@ func etag(d []byte) string {
 	return fmt.Sprintf("W/\"%x\"", hash.Sum(nil))
 }
 
-func NewWithInterceptor(fe fs.FS, handler gin.HandlerFunc) (gin.HandlerFunc, error) {
+type Config struct {
+	Interceptor         gin.HandlerFunc
+	DisableCacheControl bool
+}
+
+func NewHandler(fe fs.FS, conf Config) (gin.HandlerFunc, error) {
 	file, err := fe.Open("index.html")
 	if err != nil {
 		return nil, err
@@ -37,8 +42,8 @@ func NewWithInterceptor(fe fs.FS, handler gin.HandlerFunc) (gin.HandlerFunc, err
 			return
 		}
 
-		if handler != nil {
-			handler(c)
+		if conf.Interceptor != nil {
+			conf.Interceptor(c)
 			if c.IsAborted() {
 				return
 			}
@@ -62,12 +67,14 @@ func NewWithInterceptor(fe fs.FS, handler gin.HandlerFunc) (gin.HandlerFunc, err
 		}
 		_ = f.Close()
 
-		c.Header("Cache-Control", "public, max-age=2592000, immutable")
+		if !conf.DisableCacheControl {
+			c.Header("Cache-Control", "public, max-age=2592000, immutable")
+		}
 		fileServer.ServeHTTP(c.Writer, c.Request)
 		c.Abort()
 	}, nil
 }
 
 func New(fe fs.FS) (gin.HandlerFunc, error) {
-	return NewWithInterceptor(fe, nil)
+	return NewHandler(fe, Config{})
 }
